@@ -2,18 +2,6 @@
 
 A native macOS menu bar Pomodoro timer built with Swift and SwiftUI. It lives in your menu bar, shows a live countdown, delivers an overlay alert with sound when timers end, and keeps a persistent log of completed sessions with optional notes about what you accomplished.
 
-## Features
-
-- **Menu bar countdown** — see your remaining focus/break time at a glance
-- **Partial-screen overlay alerts** — a dimmed backdrop with a centered card appears when timers end, impossible to miss but not hostile
-- **Session notes** — record what you accomplished after each focus session
-- **Persistent log** — browse all past sessions grouped by day, edit notes, delete entries
-- **Manual entries** — retroactively log focus blocks you didn't record with the app
-- **Custom entry types** — built-in Focus and Meeting types, plus create your own
-- **Auto-start breaks** — break timer starts immediately when focus ends (no dead time)
-- **Configurable durations** — focus, short break, long break, and long-break interval
-- **Launch at login** — uses macOS 13+ `SMAppService`
-
 ## Why I Made This
 
 Existing pomodoro apps didn't let me do exactly what I wanted: keep track of what I did in each session and manually record focus blocks that I didn't capture with the app, so I could maintain an accurate log of my focus and tasks. Rather than hunting for an app with the right combination of features, I built one in about an hour... **I literally put a PRD in a directory and a functional app apeared.**
@@ -30,6 +18,18 @@ Existing pomodoro apps didn't let me do exactly what I wanted: keep track of wha
 
 The only things I needed to fix after the initial version were 1. Making the menu bar icon color dynamic so it shows up on both light and dark menu bars, and 2. adding a "Quit App" option to the menu. Everything else worked out of the box.
 
+## Features
+
+- **Menu bar countdown** — see your remaining focus/break time at a glance
+- **Partial-screen overlay alerts** — a dimmed backdrop with a centered card appears when timers end, impossible to miss but not hostile
+- **Session notes** — record what you accomplished after each focus session
+- **Persistent log** — browse all past sessions grouped by day, edit notes, delete entries
+- **Manual entries** — retroactively log focus blocks you didn't record with the app
+- **Custom entry types** — built-in Focus and Meeting types, plus create your own
+- **Auto-start breaks** — break timer starts immediately when focus ends (no dead time)
+- **Configurable durations** — focus, short break, long break, and long-break interval
+- **Launch at login** — uses macOS 13+ `SMAppService`
+- 
 ## Requirements
 
 - macOS 13 (Ventura) or later
