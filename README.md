@@ -16,7 +16,7 @@ A native macOS menu bar Pomodoro timer built with Swift and SwiftUI. It lives in
 
 ## Why I Made This
 
-Existing pomodoro apps didn't let me do exactly what I wanted: keep track of what I did in each session and manually record focus blocks that I didn't capture with the app, so I could maintain an accurate log of my focus and tasks. Rather than hunting for an app with the right combination of features, I built one in about an hour... without writing a single line of code.
+Existing pomodoro apps didn't let me do exactly what I wanted: keep track of what I did in each session and manually record focus blocks that I didn't capture with the app, so I could maintain an accurate log of my focus and tasks. Rather than hunting for an app with the right combination of features, I built one in about an hour... **I literally put a PRD in a directory and a functional app apeared.**
 
 ### The Workflow
 
