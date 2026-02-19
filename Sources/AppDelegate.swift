@@ -45,12 +45,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Pomodoro Timer")
-            button.image?.isTemplate = false
             let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
             button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Pomodoro Timer")?
                 .withSymbolConfiguration(config)
-            button.contentTintColor = NSColor(red: 232/255, green: 93/255, blue: 74/255, alpha: 1.0)
+            button.image?.isTemplate = true
             button.action = #selector(togglePopover)
             button.target = self
         }
@@ -116,7 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
             button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Pomodoro Timer")?
                 .withSymbolConfiguration(config)
-            button.contentTintColor = NSColor(red: 232/255, green: 93/255, blue: 74/255, alpha: 1.0)
+            button.image?.isTemplate = true
 
         case (.focus, false):
             if showTimer {

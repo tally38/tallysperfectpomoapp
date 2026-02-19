@@ -153,6 +153,15 @@ struct MenuBarPopover: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button(action: { NSApp.terminate(nil) }) {
+                Label("Quit", systemImage: "power")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
         }
     }
 }
