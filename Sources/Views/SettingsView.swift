@@ -11,6 +11,8 @@ struct SettingsView: View {
     @AppStorage("showTimerInMenuBar") private var showTimerInMenuBar = true
 
     @State private var launchAtLogin = false
+    @State private var customTypes: [String] = []
+    @State private var newTypeName: String = ""
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
 
@@ -39,6 +41,37 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Pomo Types") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Built-in: focus, meeting")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(customTypes, id: \.self) { typeName in
+                    HStack {
+                        Text(typeName)
+                        Spacer()
+                        Button(role: .destructive) {
+                            removeCustomType(typeName)
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+
+                HStack {
+                    TextField("New type name", text: $newTypeName)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Add") {
+                        addCustomType()
+                    }
+                    .disabled(newTypeName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+
             Section("System") {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { newValue in
@@ -50,7 +83,25 @@ struct SettingsView: View {
         .frame(width: 380)
         .onAppear {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            customTypes = UserDefaults.standard.stringArray(forKey: "customPomoTypes") ?? []
         }
+    }
+
+    private static let builtInTypes = ["focus", "meeting"]
+
+    private func addCustomType() {
+        let name = newTypeName.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !name.isEmpty,
+              !Self.builtInTypes.contains(name),
+              !customTypes.contains(name) else { return }
+        customTypes.append(name)
+        UserDefaults.standard.set(customTypes, forKey: "customPomoTypes")
+        newTypeName = ""
+    }
+
+    private func removeCustomType(_ name: String) {
+        customTypes.removeAll { $0 == name }
+        UserDefaults.standard.set(customTypes, forKey: "customPomoTypes")
     }
 
     private func updateLaunchAtLogin(enabled: Bool) {

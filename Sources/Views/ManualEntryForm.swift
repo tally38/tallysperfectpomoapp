@@ -7,8 +7,16 @@ struct ManualEntryForm: View {
     @State private var date = Date()
     @State private var durationMinutes: Int = 25
     @State private var notes: String = ""
+    @State private var selectedType: PomodoroEntry.EntryType = .focus
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
+
+    private var allTypes: [PomodoroEntry.EntryType] {
+        var types: [PomodoroEntry.EntryType] = [.focus, .meeting]
+        let custom = UserDefaults.standard.stringArray(forKey: "customPomoTypes") ?? []
+        types += custom.map { PomodoroEntry.EntryType(rawValue: $0) }
+        return types
+    }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -20,6 +28,12 @@ struct ManualEntryForm: View {
                     .datePickerStyle(.field)
 
                 Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 1...120)
+
+                Picker("Type", selection: $selectedType) {
+                    ForEach(allTypes, id: \.self) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Notes")
@@ -55,7 +69,7 @@ struct ManualEntryForm: View {
                         startedAt: date,
                         duration: TimeInterval(durationMinutes * 60),
                         notes: notes,
-                        type: .focus,
+                        type: selectedType,
                         manual: true
                     )
                     store.addEntry(entry)

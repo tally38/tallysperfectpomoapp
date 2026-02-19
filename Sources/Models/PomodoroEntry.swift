@@ -5,10 +5,17 @@ struct PomodoroEntry: Identifiable, Codable, Equatable {
     let startedAt: Date
     var duration: TimeInterval
     var notes: String
-    let type: EntryType
+    var type: EntryType
     let manual: Bool
 
-    enum EntryType: String, Codable {
-        case focus
+    struct EntryType: RawRepresentable, Codable, Equatable, Hashable {
+        let rawValue: String
+
+        init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+
+        static let focus = EntryType(rawValue: "focus")
+        static let meeting = EntryType(rawValue: "meeting")
     }
 }

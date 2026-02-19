@@ -39,6 +39,12 @@ class PomodoroStore: ObservableObject {
         save()
     }
 
+    func updateType(id: UUID, type: PomodoroEntry.EntryType) {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[index].type = type
+        save()
+    }
+
     func deleteEntry(id: UUID) {
         entries.removeAll { $0.id == id }
         save()

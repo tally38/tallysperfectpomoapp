@@ -22,6 +22,7 @@ final class PomodoroStoreTests: XCTestCase {
         notes: String = "",
         startedAt: Date = Date(),
         duration: TimeInterval = 1500,
+        type: PomodoroEntry.EntryType = .focus,
         manual: Bool = false
     ) -> PomodoroEntry {
         PomodoroEntry(
@@ -29,7 +30,7 @@ final class PomodoroStoreTests: XCTestCase {
             startedAt: startedAt,
             duration: duration,
             notes: notes,
-            type: .focus,
+            type: type,
             manual: manual
         )
     }
@@ -177,5 +178,62 @@ final class PomodoroStoreTests: XCTestCase {
         store.addEntry(entry)
 
         XCTAssertTrue(store.entries.first?.manual ?? false)
+    }
+
+    // MARK: - Entry Type
+
+    func testDefaultType_isFocus() {
+        let store = PomodoroStore(fileURL: tempFileURL)
+        let entry = makeEntry(notes: "Focus session")
+        store.addEntry(entry)
+
+        XCTAssertEqual(store.entries.first?.type, .focus)
+    }
+
+    func testMeetingType() {
+        let store = PomodoroStore(fileURL: tempFileURL)
+        let entry = makeEntry(notes: "Standup", type: .meeting)
+        store.addEntry(entry)
+
+        XCTAssertEqual(store.entries.first?.type, .meeting)
+    }
+
+    func testCustomType() {
+        let store = PomodoroStore(fileURL: tempFileURL)
+        let customType = PomodoroEntry.EntryType(rawValue: "learning")
+        let entry = makeEntry(notes: "Swift concurrency", type: customType)
+        store.addEntry(entry)
+
+        XCTAssertEqual(store.entries.first?.type.rawValue, "learning")
+    }
+
+    func testUpdateType() {
+        let store = PomodoroStore(fileURL: tempFileURL)
+        let entry = makeEntry(notes: "Was focus, now meeting")
+        store.addEntry(entry)
+
+        store.updateType(id: entry.id, type: .meeting)
+
+        XCTAssertEqual(store.entries.first?.type, .meeting)
+    }
+
+    func testUpdateType_nonexistentId() {
+        let store = PomodoroStore(fileURL: tempFileURL)
+        let entry = makeEntry(notes: "Focus", type: .focus)
+        store.addEntry(entry)
+
+        store.updateType(id: UUID(), type: .meeting)
+
+        XCTAssertEqual(store.entries.first?.type, .focus)
+    }
+
+    func testCustomType_persistsAcrossInstances() {
+        let store1 = PomodoroStore(fileURL: tempFileURL)
+        let customType = PomodoroEntry.EntryType(rawValue: "deep-work")
+        store1.addEntry(makeEntry(notes: "Persisted custom", type: customType))
+
+        let store2 = PomodoroStore(fileURL: tempFileURL)
+
+        XCTAssertEqual(store2.entries.first?.type.rawValue, "deep-work")
     }
 }
