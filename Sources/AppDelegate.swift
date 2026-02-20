@@ -2,10 +2,17 @@ import AppKit
 import SwiftUI
 import Combine
 
+private class PopoverPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    private var popoverPanel: PopoverPanel?
+    private var popoverMonitor: Any?
+    private var lastPopoverDismissTime = Date.distantPast
     private var overlayWindow: OverlayWindow?
     private var overlayDismissHandler: (() -> Void)?
     private var logWindow: NSWindow?
@@ -16,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let soundManager = SoundManager()
 
     private var cancellables = Set<AnyCancellable>()
-    private var eventMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Register UserDefaults defaults
@@ -54,37 +60,102 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Popover
+    // MARK: - Popover Panel
 
     private func setupPopover() {
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 300, height: 340)
-        popover.behavior = .transient
-        popover.animates = true
-
         let popoverView = MenuBarPopover(
             timerManager: timerManager,
             onShowLog: { [weak self] in
-                self?.popover.performClose(nil)
+                self?.dismissPopoverPanel()
                 self?.showLogWindow()
             },
             onShowSettings: { [weak self] in
-                self?.popover.performClose(nil)
+                self?.dismissPopoverPanel()
                 self?.showSettingsWindow()
+            },
+            onDismiss: { [weak self] in
+                self?.dismissPopoverPanel()
             }
         )
-        popover.contentViewController = NSHostingController(rootView: popoverView)
+
+        let panel = PopoverPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isFloatingPanel = true
+        panel.level = .popUpMenu
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isMovableByWindowBackground = true
+        panel.isReleasedWhenClosed = false
+
+        let visualEffect = NSVisualEffectView()
+        visualEffect.material = .popover
+        visualEffect.state = .active
+        visualEffect.blendingMode = .behindWindow
+        visualEffect.wantsLayer = true
+        visualEffect.layer?.cornerRadius = 10
+        visualEffect.layer?.masksToBounds = true
+
+        let hostingView = NSHostingView(rootView: popoverView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+
+        visualEffect.addSubview(hostingView)
+        NSLayoutConstraint.activate([
+            hostingView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
+        ])
+
+        panel.contentView = visualEffect
+        panel.setContentSize(hostingView.fittingSize)
+
+        self.popoverPanel = panel
     }
 
     @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
+        // Ignore toggle if we just dismissed (prevents race with global monitor)
+        if Date().timeIntervalSince(lastPopoverDismissTime) < 0.3 { return }
 
-        if popover.isShown {
-            popover.performClose(nil)
+        if let panel = popoverPanel, panel.isVisible {
+            dismissPopoverPanel()
         } else {
-            NSApp.activate(ignoringOtherApps: true)
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            showPopoverPanel()
         }
+    }
+
+    private func showPopoverPanel() {
+        guard let panel = popoverPanel,
+              let button = statusItem.button,
+              let buttonWindow = button.window else { return }
+
+        // Position below the status item button
+        let buttonRect = button.convert(button.bounds, to: nil)
+        let screenRect = buttonWindow.convertToScreen(buttonRect)
+        let panelSize = panel.frame.size
+        let x = screenRect.midX - panelSize.width / 2
+        let y = screenRect.minY - panelSize.height - 4
+
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        panel.makeKeyAndOrderFront(nil)
+
+        // Dismiss on click outside
+        popoverMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.dismissPopoverPanel()
+        }
+    }
+
+    private func dismissPopoverPanel() {
+        popoverPanel?.orderOut(nil)
+        if let monitor = popoverMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverMonitor = nil
+        }
+        lastPopoverDismissTime = Date()
     }
 
     // MARK: - Menu Bar Updates
@@ -101,6 +172,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateMenuBarDisplay(phase: phase, isPaused: isPaused, remaining: remaining)
         }
         .store(in: &cancellables)
+
     }
 
     private func updateMenuBarDisplay(phase: TimerPhase, isPaused: Bool, remaining: Int) {

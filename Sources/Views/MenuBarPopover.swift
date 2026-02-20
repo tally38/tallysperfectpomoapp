@@ -4,6 +4,7 @@ struct MenuBarPopover: View {
     @ObservedObject var timerManager: TimerManager
     var onShowLog: () -> Void
     var onShowSettings: () -> Void
+    var onDismiss: () -> Void
 
     @State private var showCancelConfirmation = false
     @State private var focusMinutesText: String = ""
@@ -125,6 +126,7 @@ struct MenuBarPopover: View {
 
     private func startWithEnteredDuration() {
         let minutes = enteredMinutes ?? defaultFocusMinutes
+        onDismiss()
         timerManager.startFocus(durationMinutes: minutes)
     }
 

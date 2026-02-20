@@ -29,16 +29,16 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Timer Durations") {
-                durationField("Focus", text: $focusText, suffix: "min", range: 1...120) {
+                durationField("Focus", text: $focusText, suffix: "min", range: 1...120, currentValue: focusDuration) {
                     focusDuration = $0
                 }
-                durationField("Short break", text: $shortBreakText, suffix: "min", range: 1...60) {
+                durationField("Short break", text: $shortBreakText, suffix: "min", range: 1...60, currentValue: shortBreakDuration) {
                     shortBreakDuration = $0
                 }
-                durationField("Long break", text: $longBreakText, suffix: "min", range: 1...60) {
+                durationField("Long break", text: $longBreakText, suffix: "min", range: 1...60, currentValue: longBreakDuration) {
                     longBreakDuration = $0
                 }
-                durationField("Long break every", text: $longBreakIntervalText, suffix: "pomos", range: 2...10) {
+                durationField("Long break every", text: $longBreakIntervalText, suffix: "pomos", range: 2...10, currentValue: longBreakInterval) {
                     longBreakInterval = $0
                 }
             }
@@ -151,6 +151,7 @@ struct SettingsView: View {
         text: Binding<String>,
         suffix: String,
         range: ClosedRange<Int>,
+        currentValue: Int,
         onCommit: @escaping (Int) -> Void
     ) -> some View {
         let isInvalid = !text.wrappedValue.isEmpty && Int(text.wrappedValue) == nil
@@ -163,8 +164,14 @@ struct SettingsView: View {
                     .frame(width: 48)
                     .multilineTextAlignment(.trailing)
                     .border(isInvalid ? Color.red : Color.clear, width: 1)
+                    .onChange(of: text.wrappedValue) { newValue in
+                        if let value = Int(newValue) {
+                            let clamped = min(max(value, range.lowerBound), range.upperBound)
+                            onCommit(clamped)
+                        }
+                    }
                     .onSubmit {
-                        commitDuration(text: text, range: range, onCommit: onCommit)
+                        commitDuration(text: text, range: range, currentValue: currentValue, onCommit: onCommit)
                     }
                 Text(suffix)
                     .foregroundStyle(.secondary)
@@ -180,6 +187,7 @@ struct SettingsView: View {
     private func commitDuration(
         text: Binding<String>,
         range: ClosedRange<Int>,
+        currentValue: Int,
         onCommit: @escaping (Int) -> Void
     ) {
         if let value = Int(text.wrappedValue) {
@@ -187,9 +195,8 @@ struct SettingsView: View {
             onCommit(clamped)
             text.wrappedValue = "\(clamped)"
         } else {
-            // Reset to lower bound if input is not a valid number
-            onCommit(range.lowerBound)
-            text.wrappedValue = "\(range.lowerBound)"
+            // Revert to the current saved value
+            text.wrappedValue = "\(currentValue)"
         }
     }
 
