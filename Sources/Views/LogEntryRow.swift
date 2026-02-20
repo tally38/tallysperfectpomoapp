@@ -8,6 +8,7 @@ struct LogEntryRow: View {
 
     @State private var isEditing = false
     @State private var editedNotes: String = ""
+    @State private var showDeleteConfirmation = false
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
 
@@ -100,9 +101,15 @@ struct LogEntryRow: View {
                     }
                 }
             }
-            Button(role: .destructive, action: onDelete) {
+            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
             }
+        }
+        .alert("Delete Entry", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive, action: onDelete)
+        } message: {
+            Text("Are you sure you want to delete this entry? This cannot be undone.")
         }
     }
 

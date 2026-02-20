@@ -9,25 +9,40 @@ struct SettingsView: View {
     @AppStorage("autoStartFocus") private var autoStartFocus = false
     @AppStorage("alertSound") private var alertSound = "Glass"
     @AppStorage("showTimerInMenuBar") private var showTimerInMenuBar = true
+    @AppStorage("blockingOverlay") private var blockingOverlay = false
 
     @State private var launchAtLogin = false
     @State private var customTypes: [String] = []
     @State private var newTypeName: String = ""
+
+    @State private var focusText = ""
+    @State private var shortBreakText = ""
+    @State private var longBreakText = ""
+    @State private var longBreakIntervalText = ""
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
 
     var body: some View {
         Form {
             Section("Timer Durations") {
-                Stepper("Focus: \(focusDuration) min", value: $focusDuration, in: 1...120)
-                Stepper("Short break: \(shortBreakDuration) min", value: $shortBreakDuration, in: 1...60)
-                Stepper("Long break: \(longBreakDuration) min", value: $longBreakDuration, in: 1...60)
-                Stepper("Long break every \(longBreakInterval) pomos", value: $longBreakInterval, in: 2...10)
+                durationField("Focus", text: $focusText, suffix: "min", range: 1...120) {
+                    focusDuration = $0
+                }
+                durationField("Short break", text: $shortBreakText, suffix: "min", range: 1...60) {
+                    shortBreakDuration = $0
+                }
+                durationField("Long break", text: $longBreakText, suffix: "min", range: 1...60) {
+                    longBreakDuration = $0
+                }
+                durationField("Long break every", text: $longBreakIntervalText, suffix: "pomos", range: 2...10) {
+                    longBreakInterval = $0
+                }
             }
 
             Section("Behavior") {
                 Toggle("Auto-start focus after break", isOn: $autoStartFocus)
                 Toggle("Show timer in menu bar", isOn: $showTimerInMenuBar)
+                Toggle("Block background until entry is submitted", isOn: $blockingOverlay)
             }
 
             Section("Sound") {
@@ -84,6 +99,48 @@ struct SettingsView: View {
         .onAppear {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
             customTypes = UserDefaults.standard.stringArray(forKey: "customPomoTypes") ?? []
+            focusText = "\(focusDuration)"
+            shortBreakText = "\(shortBreakDuration)"
+            longBreakText = "\(longBreakDuration)"
+            longBreakIntervalText = "\(longBreakInterval)"
+        }
+    }
+
+    private func durationField(
+        _ label: String,
+        text: Binding<String>,
+        suffix: String,
+        range: ClosedRange<Int>,
+        onCommit: @escaping (Int) -> Void
+    ) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("", text: text)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 48)
+                .multilineTextAlignment(.trailing)
+                .onSubmit {
+                    commitDuration(text: text, range: range, onCommit: onCommit)
+                }
+            Text(suffix)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func commitDuration(
+        text: Binding<String>,
+        range: ClosedRange<Int>,
+        onCommit: @escaping (Int) -> Void
+    ) {
+        if let value = Int(text.wrappedValue) {
+            let clamped = min(max(value, range.lowerBound), range.upperBound)
+            onCommit(clamped)
+            text.wrappedValue = "\(clamped)"
+        } else {
+            // Reset to lower bound if input is not a valid number
+            onCommit(range.lowerBound)
+            text.wrappedValue = "\(range.lowerBound)"
         }
     }
 

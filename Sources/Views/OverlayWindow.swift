@@ -3,9 +3,9 @@ import AppKit
 class OverlayWindow: NSPanel {
     var onEscape: (() -> Void)?
 
-    init(screen: NSScreen) {
+    init() {
         super.init(
-            contentRect: screen.frame,
+            contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -15,9 +15,10 @@ class OverlayWindow: NSPanel {
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.isOpaque = false
         self.backgroundColor = .clear
-        self.hasShadow = false
+        self.hasShadow = true
         self.ignoresMouseEvents = false
-        self.isMovable = false
+        self.isMovable = true
+        self.isMovableByWindowBackground = true
         self.acceptsMouseMovedEvents = false
         self.isReleasedWhenClosed = false
     }

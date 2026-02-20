@@ -27,7 +27,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "longBreakInterval": 4,
             "autoStartFocus": false,
             "alertSound": "Glass",
-            "showTimerInMenuBar": true
+            "showTimerInMenuBar": true,
+            "blockingOverlay": false
         ])
 
         // Hide from Dock
@@ -164,20 +165,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Overlay
 
     private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval) {
+        let saveAndDismiss: (String) -> Void = { [weak self] notes in
+            guard let self else { return }
+            let entry = PomodoroEntry(
+                id: UUID(),
+                startedAt: startedAt,
+                duration: duration,
+                notes: notes,
+                type: .focus,
+                manual: false
+            )
+            self.pomodoroStore.addEntry(entry)
+            self.dismissOverlay()
+        }
+
         let contentView = OverlayContentView(
             mode: .focusComplete,
-            onSaveAndBreak: { [weak self] notes in
-                guard let self else { return }
-                let entry = PomodoroEntry(
-                    id: UUID(),
-                    startedAt: startedAt,
-                    duration: duration,
-                    notes: notes,
-                    type: .focus,
-                    manual: false
-                )
-                self.pomodoroStore.addEntry(entry)
-                self.dismissOverlay()
+            timerManager: timerManager,
+            onSaveAndBreak: { notes in
+                saveAndDismiss(notes)
             },
             onSaveAndSkipBreak: { [weak self] notes in
                 guard let self else { return }
@@ -196,30 +202,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onStartFocus: nil,
             onNotYet: nil,
-            onDismiss: nil
+            onClose: { notes in
+                saveAndDismiss(notes)
+            }
         )
 
-        let escapeDismiss: () -> Void = { [weak self] in
-            let entry = PomodoroEntry(
-                id: UUID(),
-                startedAt: startedAt,
-                duration: duration,
-                notes: "",
-                type: .focus,
-                manual: false
-            )
-            self?.pomodoroStore.addEntry(entry)
-            self?.dismissOverlay()
-        }
-
-        presentOverlay(contentView: contentView, escapeDismiss: escapeDismiss)
+        presentOverlay(contentView: contentView, escapeDismiss: { saveAndDismiss("") })
     }
 
     private func showBreakCompleteOverlay() {
+        // Auto-dismiss focus-complete overlay if still open (saves with empty notes)
+        if overlayWindow != nil {
+            overlayDismissHandler?()
+        }
+
         let autoStart = UserDefaults.standard.bool(forKey: "autoStartFocus")
+
+        let dismissAction: () -> Void = { [weak self] in
+            if autoStart {
+                self?.timerManager.cancelTimer()
+            }
+            self?.dismissOverlay()
+        }
 
         let contentView = OverlayContentView(
             mode: .breakComplete(autoStartEnabled: autoStart),
+            timerManager: timerManager,
             onSaveAndBreak: nil,
             onSaveAndSkipBreak: nil,
             onStartFocus: { [weak self] in
@@ -234,23 +242,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self?.dismissOverlay()
             },
-            onDismiss: nil
+            onClose: { _ in
+                dismissAction()
+            }
         )
 
-        let escapeDismiss: () -> Void = { [weak self] in
-            if autoStart {
-                self?.timerManager.cancelTimer()
-            }
-            self?.dismissOverlay()
-        }
-
-        presentOverlay(contentView: contentView, escapeDismiss: escapeDismiss)
+        presentOverlay(contentView: contentView, escapeDismiss: dismissAction)
     }
 
     private func presentOverlay(contentView: OverlayContentView, escapeDismiss: @escaping () -> Void) {
-        let screen = NSScreen.main ?? NSScreen.screens.first!
-        let overlay = OverlayWindow(screen: screen)
-        overlay.contentView = NSHostingView(rootView: contentView)
+        let blocking = UserDefaults.standard.bool(forKey: "blockingOverlay")
+        let overlay = OverlayWindow()
+        let hostingView = NSHostingView(rootView: contentView)
+
+        if blocking, let screen = NSScreen.main ?? NSScreen.screens.first {
+            overlay.setFrame(screen.frame, display: true)
+            overlay.isMovable = false
+            overlay.isMovableByWindowBackground = false
+        } else {
+            overlay.setContentSize(hostingView.fittingSize)
+            overlay.center()
+        }
+
+        overlay.contentView = hostingView
         self.overlayWindow = overlay
         self.overlayDismissHandler = escapeDismiss
 

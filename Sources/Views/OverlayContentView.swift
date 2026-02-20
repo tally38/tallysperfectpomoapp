@@ -7,6 +7,7 @@ enum OverlayMode {
 
 struct OverlayContentView: View {
     let mode: OverlayMode
+    @ObservedObject var timerManager: TimerManager
 
     // Focus complete actions
     var onSaveAndBreak: ((String) -> Void)?
@@ -16,23 +17,25 @@ struct OverlayContentView: View {
     var onStartFocus: (() -> Void)?
     var onNotYet: (() -> Void)?
 
-    // Escape handler
-    var onDismiss: (() -> Void)?
+    // Close button / escape handler
+    var onClose: ((String) -> Void)?
 
     @State private var notes: String = ""
     @FocusState private var isNotesFocused: Bool
+
+    @AppStorage("blockingOverlay") private var blockingOverlay = false
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
     private let cardMaxWidth: CGFloat = 500
 
     var body: some View {
-        ZStack {
-            // Dimmed backdrop
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-                .onTapGesture { /* prevent click-through, don't dismiss */ }
-
-            // Centered card
+        if blockingOverlay {
+            ZStack {
+                Color.black.opacity(0.6)
+                    .ignoresSafeArea()
+                card
+            }
+        } else {
             card
         }
     }
@@ -48,12 +51,20 @@ struct OverlayContentView: View {
             }
         }
         .padding(32)
-        .frame(maxWidth: cardMaxWidth)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(nsColor: .windowBackgroundColor))
-                .shadow(color: .black.opacity(0.3), radius: 30, y: 10)
-        )
+        .frame(width: cardMaxWidth)
+        .overlay(alignment: .topTrailing) {
+            Button(action: { onClose?(notes) }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Color(nsColor: .separatorColor).opacity(0.5)))
+            }
+            .buttonStyle(.plain)
+            .padding(12)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
             // Auto-focus the notes field with slight delay for window animation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -108,6 +119,17 @@ struct OverlayContentView: View {
             .tint(accentColor)
             .controlSize(.large)
             .keyboardShortcut(.return, modifiers: .command)
+        }
+
+        if timerManager.phase == .shortBreak || timerManager.phase == .longBreak {
+            HStack(spacing: 6) {
+                Image(systemName: "cup.and.saucer.fill")
+                    .foregroundStyle(.secondary)
+                Text("Break: \(Formatters.formatCountdown(timerManager.remainingSeconds))")
+                    .monospacedDigit()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
 
         Text("⌘Enter to save · Esc to dismiss")
