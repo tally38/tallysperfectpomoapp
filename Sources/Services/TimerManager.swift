@@ -81,6 +81,15 @@ class TimerManager: ObservableObject {
         tickCancellable = nil
     }
 
+    func snooze() {
+        tickCancellable?.cancel()
+        tickCancellable = nil
+        phase = .shortBreak
+        isPaused = false
+        targetEndDate = Date().addingTimeInterval(5 * 60)
+        startTicking()
+    }
+
     // MARK: - Timer Tick
 
     private func startTicking() {

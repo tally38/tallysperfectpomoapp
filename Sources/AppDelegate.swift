@@ -28,7 +28,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "autoStartFocus": false,
             "alertSound": "Glass",
             "showTimerInMenuBar": true,
-            "blockingOverlay": false
+            "blockingOverlay": false,
+            "breakSnoozeMode": true,
+            "focusIcon": "🧠"
         ])
 
         // Hide from Dock
@@ -46,10 +48,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
-            button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Pomodoro Timer")?
-                .withSymbolConfiguration(config)
-            button.image?.isTemplate = true
+            button.title = "🍅"
             button.action = #selector(togglePopover)
             button.target = self
         }
@@ -107,20 +106,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateMenuBarDisplay(phase: TimerPhase, isPaused: Bool, remaining: Int) {
         guard let button = statusItem.button else { return }
         let showTimer = UserDefaults.standard.bool(forKey: "showTimerInMenuBar")
+        let focusIcon = UserDefaults.standard.string(forKey: "focusIcon") ?? "🧠"
         let timeString = Formatters.formatCountdown(remaining)
 
         switch (phase, isPaused) {
         case (.idle, _):
-            button.title = ""
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
-            button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Pomodoro Timer")?
-                .withSymbolConfiguration(config)
-            button.image?.isTemplate = true
+            button.image = nil
+            button.title = "🍅"
 
         case (.focus, false):
             if showTimer {
                 button.image = nil
-                button.title = timeString
+                button.title = "\(focusIcon) \(timeString)"
             }
 
         case (.focus, true):
@@ -217,6 +214,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let autoStart = UserDefaults.standard.bool(forKey: "autoStartFocus")
+        let snoozeMode = UserDefaults.standard.bool(forKey: "breakSnoozeMode")
 
         let dismissAction: () -> Void = { [weak self] in
             if autoStart {
@@ -226,7 +224,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let contentView = OverlayContentView(
-            mode: .breakComplete(autoStartEnabled: autoStart),
+            mode: .breakComplete(snoozeMode: snoozeMode),
             timerManager: timerManager,
             onSaveAndBreak: nil,
             onSaveAndSkipBreak: nil,
@@ -240,6 +238,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 if autoStart {
                     self?.timerManager.cancelTimer()
                 }
+                self?.dismissOverlay()
+            },
+            onSnooze: { [weak self] in
+                self?.timerManager.snooze()
                 self?.dismissOverlay()
             },
             onClose: { _ in

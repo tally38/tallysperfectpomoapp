@@ -2,7 +2,7 @@ import SwiftUI
 
 enum OverlayMode {
     case focusComplete
-    case breakComplete(autoStartEnabled: Bool)
+    case breakComplete(snoozeMode: Bool)
 }
 
 struct OverlayContentView: View {
@@ -16,6 +16,7 @@ struct OverlayContentView: View {
     // Break complete actions
     var onStartFocus: (() -> Void)?
     var onNotYet: (() -> Void)?
+    var onSnooze: (() -> Void)?
 
     // Close button / escape handler
     var onClose: ((String) -> Void)?
@@ -46,8 +47,8 @@ struct OverlayContentView: View {
             switch mode {
             case .focusComplete:
                 focusCompleteCard
-            case .breakComplete(let autoStart):
-                breakCompleteCard(autoStartEnabled: autoStart)
+            case .breakComplete(let snoozeMode):
+                breakCompleteCard(snoozeMode: snoozeMode)
             }
         }
         .padding(32)
@@ -140,7 +141,7 @@ struct OverlayContentView: View {
     // MARK: - Break Complete
 
     @ViewBuilder
-    private func breakCompleteCard(autoStartEnabled: Bool) -> some View {
+    private func breakCompleteCard(snoozeMode: Bool) -> some View {
         Text("Break's over!")
             .font(.title2.weight(.semibold))
 
@@ -149,24 +150,14 @@ struct OverlayContentView: View {
             .foregroundStyle(.secondary)
 
         HStack(spacing: 12) {
-            if autoStartEnabled {
-                Button(action: { onNotYet?() }) {
-                    Text("Not Yet")
+            if snoozeMode {
+                Button(action: { onSnooze?() }) {
+                    Text("Snooze (5 min)")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-
-                Button(action: { onStartFocus?() }) {
-                    Text("Let's go!")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(accentColor)
-                .controlSize(.large)
-                .keyboardShortcut(.return, modifiers: .command)
             } else {
                 Button(action: { onNotYet?() }) {
                     Text("Not Yet")
@@ -175,21 +166,21 @@ struct OverlayContentView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-
-                Button(action: { onStartFocus?() }) {
-                    Text("Start Focus")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(accentColor)
-                .controlSize(.large)
-                .keyboardShortcut(.return, modifiers: .command)
             }
+
+            Button(action: { onStartFocus?() }) {
+                Text("Start Focus")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(accentColor)
+            .controlSize(.large)
+            .keyboardShortcut(.return, modifiers: .command)
         }
 
-        Text("⌘Enter to continue · Esc to dismiss")
+        Text("⌘Enter to start focus · Esc to dismiss")
             .font(.caption)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
     }
 }

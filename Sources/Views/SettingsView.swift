@@ -10,6 +10,10 @@ struct SettingsView: View {
     @AppStorage("alertSound") private var alertSound = "Glass"
     @AppStorage("showTimerInMenuBar") private var showTimerInMenuBar = true
     @AppStorage("blockingOverlay") private var blockingOverlay = false
+    @AppStorage("breakSnoozeMode") private var breakSnoozeMode = true
+    @AppStorage("focusIcon") private var focusIcon = "🧠"
+
+    private static let focusIconOptions = ["💻", "🔥", "📝", "🎯", "🧠"]
 
     @State private var launchAtLogin = false
     @State private var customTypes: [String] = []
@@ -43,6 +47,41 @@ struct SettingsView: View {
                 Toggle("Auto-start focus after break", isOn: $autoStartFocus)
                 Toggle("Show timer in menu bar", isOn: $showTimerInMenuBar)
                 Toggle("Block background until entry is submitted", isOn: $blockingOverlay)
+
+                Picker("When break ends, show", selection: $breakSnoozeMode) {
+                    Text("Not Yet — start manually").tag(false)
+                    Text("Snooze — 5 more minutes").tag(true)
+                }
+                .pickerStyle(.radioGroup)
+
+                Text("Controls the secondary button alongside \"Start Focus\" when a break finishes. \"Snooze\" starts another 5-minute break. \"Not Yet\" dismisses so you can start focus when you're ready.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Focus Icon") {
+                HStack(spacing: 8) {
+                    Text("Menu bar icon")
+                    Spacer()
+                    ForEach(Self.focusIconOptions, id: \.self) { icon in
+                        Button {
+                            focusIcon = icon
+                        } label: {
+                            Text(icon)
+                                .font(.title2)
+                                .padding(4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(focusIcon == icon ? accentColor.opacity(0.25) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(focusIcon == icon ? accentColor : Color.clear, lineWidth: 1.5)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             Section("Sound") {
