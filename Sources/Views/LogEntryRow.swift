@@ -105,6 +105,11 @@ struct LogEntryRow: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
         .alert("Delete Entry", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive, action: onDelete)
