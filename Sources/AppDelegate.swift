@@ -294,7 +294,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }, completionHandler: {
             overlay.orderOut(nil)
             Task { @MainActor [weak self] in
-                self?.overlayWindow = nil
+                // Only nil out if no new overlay has replaced this one
+                if self?.overlayWindow === overlay {
+                    self?.overlayWindow = nil
+                }
             }
         })
     }

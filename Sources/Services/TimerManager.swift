@@ -26,8 +26,8 @@ class TimerManager: ObservableObject {
 
     // MARK: - Public API
 
-    func startFocus() {
-        let minutes = UserDefaults.standard.integer(forKey: "focusDuration")
+    func startFocus(durationMinutes: Int? = nil) {
+        let minutes = durationMinutes ?? UserDefaults.standard.integer(forKey: "focusDuration")
         let duration = TimeInterval(minutes > 0 ? minutes : 25) * 60
 
         phase = .focus
