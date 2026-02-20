@@ -3,8 +3,14 @@ import SwiftUI
 struct LogWindow: View {
     @ObservedObject var store: PomodoroStore
     @State private var showManualEntry = false
+    @State private var selectedTab: LogTab = .log
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
+
+    enum LogTab: String, CaseIterable {
+        case log = "Log"
+        case analysis = "Analysis"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,11 +21,23 @@ struct LogWindow: View {
 
                 Spacer()
 
+                Picker("", selection: $selectedTab) {
+                    ForEach(LogTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 160)
+
+                Spacer()
+
                 Button(action: { showManualEntry = true }) {
                     Label("Add Manual Pomo", systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .opacity(selectedTab == .log ? 1 : 0)
+                .allowsHitTesting(selectedTab == .log)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -27,11 +45,15 @@ struct LogWindow: View {
 
             Divider()
 
-            // Log entries
-            if store.entries.isEmpty {
-                emptyState
-            } else {
-                logList
+            switch selectedTab {
+            case .log:
+                if store.entries.isEmpty {
+                    emptyState
+                } else {
+                    logList
+                }
+            case .analysis:
+                AnalyticsView(store: store)
             }
         }
         .sheet(isPresented: $showManualEntry) {

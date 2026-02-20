@@ -316,8 +316,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Pomo Log"
-        window.setContentSize(NSSize(width: 500, height: 600))
-        window.minSize = NSSize(width: 400, height: 500)
+        window.setContentSize(NSSize(width: 560, height: 620))
+        window.minSize = NSSize(width: 480, height: 520)
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.center()
         window.isReleasedWhenClosed = false

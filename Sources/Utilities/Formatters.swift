@@ -30,6 +30,13 @@ enum Formatters {
         return formatter.string(from: date)
     }
 
+    /// Formats a date as "MMM d, yyyy" (e.g., "Feb 17, 2026")
+    static func formatMediumDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
+    }
+
     /// Formats duration in seconds to a human-readable string (e.g., 1500 → "25 min")
     static func formatDuration(_ seconds: TimeInterval) -> String {
         let minutes = Int(seconds) / 60
