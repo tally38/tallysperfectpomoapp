@@ -106,6 +106,7 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
     private func durationField(
         _ label: String,
         text: Binding<String>,
@@ -113,18 +114,27 @@ struct SettingsView: View {
         range: ClosedRange<Int>,
         onCommit: @escaping (Int) -> Void
     ) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            TextField("", text: text)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 48)
-                .multilineTextAlignment(.trailing)
-                .onSubmit {
-                    commitDuration(text: text, range: range, onCommit: onCommit)
-                }
-            Text(suffix)
-                .foregroundStyle(.secondary)
+        let isInvalid = !text.wrappedValue.isEmpty && Int(text.wrappedValue) == nil
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(label)
+                Spacer()
+                TextField("", text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 48)
+                    .multilineTextAlignment(.trailing)
+                    .border(isInvalid ? Color.red : Color.clear, width: 1)
+                    .onSubmit {
+                        commitDuration(text: text, range: range, onCommit: onCommit)
+                    }
+                Text(suffix)
+                    .foregroundStyle(.secondary)
+            }
+            if isInvalid {
+                Text("Enter a whole number (\(range.lowerBound)–\(range.upperBound))")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
         }
     }
 
