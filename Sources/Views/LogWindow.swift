@@ -91,6 +91,9 @@ struct LogWindow: View {
                             onUpdateNotes: { newNotes in
                                 store.updateNotes(id: entry.id, notes: newNotes)
                             },
+                            onUpdateDuration: { newDuration in
+                                store.updateDuration(id: entry.id, duration: newDuration)
+                            },
                             onUpdateType: { newType in
                                 store.updateType(id: entry.id, type: newType)
                             },

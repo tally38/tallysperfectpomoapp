@@ -39,6 +39,12 @@ class PomodoroStore: ObservableObject {
         save()
     }
 
+    func updateDuration(id: UUID, duration: TimeInterval) {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[index].duration = duration
+        save()
+    }
+
     func updateType(id: UUID, type: PomodoroEntry.EntryType) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
         entries[index].type = type

@@ -3,11 +3,14 @@ import SwiftUI
 struct LogEntryRow: View {
     let entry: PomodoroEntry
     var onUpdateNotes: (String) -> Void
+    var onUpdateDuration: (TimeInterval) -> Void
     var onUpdateType: (PomodoroEntry.EntryType) -> Void
     var onDelete: () -> Void
 
     @State private var isEditing = false
     @State private var editedNotes: String = ""
+    @State private var isEditingDuration = false
+    @State private var editedDurationText: String = ""
     @State private var showDeleteConfirmation = false
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
@@ -36,15 +39,46 @@ struct LogEntryRow: View {
                     .foregroundStyle(.secondary)
 
                 // Duration badge
-                Text(Formatters.formatDuration(entry.duration))
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(accentColor.opacity(0.15))
-                    )
-                    .foregroundStyle(accentColor)
+                if isEditingDuration {
+                    HStack(spacing: 4) {
+                        TextField("", text: $editedDurationText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 44)
+                            .multilineTextAlignment(.center)
+                            .font(.caption.monospacedDigit())
+                        Text("min")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Save") {
+                            if let minutes = Int(editedDurationText), minutes > 0 {
+                                onUpdateDuration(TimeInterval(minutes * 60))
+                            }
+                            isEditingDuration = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(accentColor)
+                        .controlSize(.mini)
+                        Button("Cancel") {
+                            isEditingDuration = false
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                    }
+                } else {
+                    Text(Formatters.formatDuration(entry.duration))
+                        .font(.caption.weight(.medium))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(accentColor.opacity(0.15))
+                        )
+                        .foregroundStyle(accentColor)
+                        .onTapGesture {
+                            editedDurationText = "\(Int(entry.duration) / 60)"
+                            isEditingDuration = true
+                        }
+                }
 
                 // Type badge
                 Text(entry.type.rawValue)
@@ -87,6 +121,12 @@ struct LogEntryRow: View {
                 editedNotes = entry.notes
             }) {
                 Label("Edit Notes", systemImage: "pencil")
+            }
+            Button(action: {
+                editedDurationText = "\(Int(entry.duration) / 60)"
+                isEditingDuration = true
+            }) {
+                Label("Edit Duration", systemImage: "clock")
             }
             Menu("Change Type") {
                 ForEach(allTypes, id: \.self) { type in

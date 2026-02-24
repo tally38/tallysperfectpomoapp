@@ -234,12 +234,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Overlay
 
     private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval) {
-        let saveAndDismiss: (String) -> Void = { [weak self] notes in
+        let saveAndDismiss: (String, TimeInterval) -> Void = { [weak self] notes, editedDuration in
             guard let self else { return }
             let entry = PomodoroEntry(
                 id: UUID(),
                 startedAt: startedAt,
-                duration: duration,
+                duration: editedDuration,
                 notes: notes,
                 type: .focus,
                 manual: false
@@ -251,15 +251,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = OverlayContentView(
             mode: .focusComplete,
             timerManager: timerManager,
-            onSaveAndBreak: { notes in
-                saveAndDismiss(notes)
+            duration: duration,
+            onSaveAndBreak: { notes, editedDuration in
+                saveAndDismiss(notes, editedDuration)
             },
-            onSaveAndSkipBreak: { [weak self] notes in
+            onSaveAndSkipBreak: { [weak self] notes, editedDuration in
                 guard let self else { return }
                 let entry = PomodoroEntry(
                     id: UUID(),
                     startedAt: startedAt,
-                    duration: duration,
+                    duration: editedDuration,
                     notes: notes,
                     type: .focus,
                     manual: false
@@ -271,12 +272,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onStartFocus: nil,
             onNotYet: nil,
-            onClose: { notes in
-                saveAndDismiss(notes)
+            onClose: { notes, editedDuration in
+                saveAndDismiss(notes, editedDuration)
             }
         )
 
-        presentOverlay(contentView: contentView, escapeDismiss: { saveAndDismiss("") })
+        presentOverlay(contentView: contentView, escapeDismiss: { saveAndDismiss("", duration) })
     }
 
     private func showBreakCompleteOverlay() {
@@ -316,7 +317,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.timerManager.snooze()
                 self?.dismissOverlay()
             },
-            onClose: { _ in
+            onClose: { _, _ in
                 dismissAction()
             }
         )

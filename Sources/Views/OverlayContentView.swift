@@ -8,10 +8,11 @@ enum OverlayMode {
 struct OverlayContentView: View {
     let mode: OverlayMode
     @ObservedObject var timerManager: TimerManager
+    var duration: TimeInterval = 0
 
-    // Focus complete actions
-    var onSaveAndBreak: ((String) -> Void)?
-    var onSaveAndSkipBreak: ((String) -> Void)?
+    // Focus complete actions — pass (notes, editedDuration)
+    var onSaveAndBreak: ((String, TimeInterval) -> Void)?
+    var onSaveAndSkipBreak: ((String, TimeInterval) -> Void)?
 
     // Break complete actions
     var onStartFocus: (() -> Void)?
@@ -19,15 +20,23 @@ struct OverlayContentView: View {
     var onSnooze: (() -> Void)?
 
     // Close button / escape handler
-    var onClose: ((String) -> Void)?
+    var onClose: ((String, TimeInterval) -> Void)?
 
     @State private var notes: String = ""
+    @State private var durationText: String = ""
     @FocusState private var isNotesFocused: Bool
 
     @AppStorage("blockingOverlay") private var blockingOverlay = false
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
     private let cardMaxWidth: CGFloat = 500
+
+    private var editedDuration: TimeInterval {
+        guard let minutes = Int(durationText), minutes > 0 else {
+            return duration
+        }
+        return TimeInterval(minutes * 60)
+    }
 
     var body: some View {
         if blockingOverlay {
@@ -54,7 +63,7 @@ struct OverlayContentView: View {
         .padding(32)
         .frame(width: cardMaxWidth)
         .overlay(alignment: .topTrailing) {
-            Button(action: { onClose?(notes) }) {
+            Button(action: { onClose?(notes, editedDuration) }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.secondary)
@@ -67,6 +76,7 @@ struct OverlayContentView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
+            durationText = "\(Int(duration / 60))"
             // Auto-focus the notes field with slight delay for window animation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isNotesFocused = true
@@ -80,6 +90,20 @@ struct OverlayContentView: View {
     private var focusCompleteCard: some View {
         Text("Focus session complete!")
             .font(.title2.weight(.semibold))
+
+        HStack(spacing: 4) {
+            Text("Duration:")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("", text: $durationText)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 50)
+                .multilineTextAlignment(.center)
+                .font(.subheadline.monospacedDigit())
+            Text("min")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
 
         VStack(alignment: .leading, spacing: 8) {
             Text("What did you accomplish?")
@@ -103,7 +127,7 @@ struct OverlayContentView: View {
         }
 
         HStack(spacing: 12) {
-            Button(action: { onSaveAndSkipBreak?(notes) }) {
+            Button(action: { onSaveAndSkipBreak?(notes, editedDuration) }) {
                 Text("Save & Skip Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -111,7 +135,7 @@ struct OverlayContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            Button(action: { onSaveAndBreak?(notes) }) {
+            Button(action: { onSaveAndBreak?(notes, editedDuration) }) {
                 Text("Save & Take Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
