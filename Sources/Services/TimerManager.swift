@@ -8,6 +8,7 @@ class TimerManager: ObservableObject {
     @Published var isPaused: Bool = false
     @Published var remainingSeconds: Int = 0
     @Published var completedPomosInCycle: Int = 0
+    @Published var sessionType: PomodoroEntry.EntryType = .focus
 
     /// Fires when a focus or break session completes
     let events = PassthroughSubject<TimerEvent, Never>()
@@ -26,12 +27,13 @@ class TimerManager: ObservableObject {
 
     // MARK: - Public API
 
-    func startFocus(durationMinutes: Int? = nil) {
+    func startFocus(durationMinutes: Int? = nil, type: PomodoroEntry.EntryType? = nil) {
         let minutes = durationMinutes ?? UserDefaults.standard.integer(forKey: "focusDuration")
         let duration = TimeInterval(minutes > 0 ? minutes : 25) * 60
 
         phase = .focus
         isPaused = false
+        sessionType = type ?? .focus
         focusStartedAt = Date()
         focusDurationUsed = duration
         targetEndDate = Date().addingTimeInterval(duration)
@@ -72,6 +74,7 @@ class TimerManager: ObservableObject {
     func cancelTimer() {
         phase = .idle
         isPaused = false
+        sessionType = .focus
         targetEndDate = nil
         focusStartedAt = nil
         focusDurationUsed = 0
@@ -122,13 +125,14 @@ class TimerManager: ObservableObject {
         case .focus:
             let startedAt = focusStartedAt ?? Date()
             let duration = focusDurationUsed
+            let type = sessionType
             completedPomosInCycle += 1
 
             // Start break immediately
             startBreak()
 
             // Fire event (AppDelegate shows overlay and plays sound)
-            events.send(.focusCompleted(startedAt: startedAt, duration: duration))
+            events.send(.focusCompleted(startedAt: startedAt, duration: duration, type: type))
 
         case .shortBreak, .longBreak:
             let autoStart = UserDefaults.standard.bool(forKey: "autoStartFocus")

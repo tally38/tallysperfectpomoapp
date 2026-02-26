@@ -220,9 +220,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] event in
                 guard let self else { return }
                 switch event {
-                case .focusCompleted(let startedAt, let duration):
+                case .focusCompleted(let startedAt, let duration, let type):
                     self.soundManager.playCompletionSound()
-                    self.showFocusCompleteOverlay(startedAt: startedAt, duration: duration)
+                    self.showFocusCompleteOverlay(startedAt: startedAt, duration: duration, type: type)
                 case .breakCompleted:
                     self.soundManager.playCompletionSound()
                     self.showBreakCompleteOverlay()
@@ -233,7 +233,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Overlay
 
-    private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval) {
+    private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval, type: PomodoroEntry.EntryType) {
         let saveAndDismiss: (String, TimeInterval) -> Void = { [weak self] notes, editedDuration in
             guard let self else { return }
             let entry = PomodoroEntry(
@@ -241,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 startedAt: startedAt,
                 duration: editedDuration,
                 notes: notes,
-                type: .focus,
+                type: type,
                 manual: false
             )
             self.pomodoroStore.addEntry(entry)
@@ -262,7 +262,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     startedAt: startedAt,
                     duration: editedDuration,
                     notes: notes,
-                    type: .focus,
+                    type: type,
                     manual: false
                 )
                 self.pomodoroStore.addEntry(entry)

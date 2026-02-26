@@ -5,7 +5,7 @@ struct ManualEntryForm: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var date = Date()
-    @State private var durationMinutes: Int = 25
+    @State private var durationText: String = "25"
     @State private var notes: String = ""
     @State private var selectedType: PomodoroEntry.EntryType = .focus
 
@@ -27,7 +27,17 @@ struct ManualEntryForm: View {
                 DatePicker("Date & Time", selection: $date)
                     .datePickerStyle(.field)
 
-                Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 1...120)
+                HStack {
+                    Text("Duration")
+                    Spacer()
+                    TextField("", text: $durationText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 50)
+                        .multilineTextAlignment(.center)
+                        .font(.body.monospacedDigit())
+                    Text("min")
+                        .foregroundStyle(.secondary)
+                }
 
                 Picker("Type", selection: $selectedType) {
                     ForEach(allTypes, id: \.self) { type in
@@ -64,10 +74,11 @@ struct ManualEntryForm: View {
                 .keyboardShortcut(.escape, modifiers: [])
 
                 Button("Save") {
+                    let minutes = Int(durationText) ?? 25
                     let entry = PomodoroEntry(
                         id: UUID(),
                         startedAt: date,
-                        duration: TimeInterval(durationMinutes * 60),
+                        duration: TimeInterval(max(minutes, 1) * 60),
                         notes: notes,
                         type: selectedType,
                         manual: true

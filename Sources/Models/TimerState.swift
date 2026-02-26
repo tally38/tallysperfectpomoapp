@@ -8,6 +8,6 @@ enum TimerPhase: String, Codable, Equatable {
 }
 
 enum TimerEvent {
-    case focusCompleted(startedAt: Date, duration: TimeInterval)
+    case focusCompleted(startedAt: Date, duration: TimeInterval, type: PomodoroEntry.EntryType)
     case breakCompleted
 }

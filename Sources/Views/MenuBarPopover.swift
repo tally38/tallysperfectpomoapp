@@ -8,12 +8,20 @@ struct MenuBarPopover: View {
 
     @State private var showCancelConfirmation = false
     @State private var focusMinutesText: String = ""
+    @State private var selectedType: PomodoroEntry.EntryType = .focus
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
 
     private var defaultFocusMinutes: Int {
         let val = UserDefaults.standard.integer(forKey: "focusDuration")
         return val > 0 ? val : 25
+    }
+
+    private var allTypes: [PomodoroEntry.EntryType] {
+        var types: [PomodoroEntry.EntryType] = [.focus, .meeting]
+        let custom = UserDefaults.standard.stringArray(forKey: "customPomoTypes") ?? []
+        types += custom.map { PomodoroEntry.EntryType(rawValue: $0) }
+        return types
     }
 
     var body: some View {
@@ -26,9 +34,15 @@ struct MenuBarPopover: View {
                 timerDisplay
             }
 
-            // Duration picker (idle only)
+            // Type & duration pickers (idle only)
             if timerManager.phase == .idle {
+                typePicker
                 durationPicker
+            }
+
+            // Type picker during focus
+            if timerManager.phase == .focus {
+                typePicker
             }
 
             // Primary action
@@ -46,6 +60,11 @@ struct MenuBarPopover: View {
         }
         .padding(20)
         .frame(width: 280)
+        .onAppear {
+            if timerManager.phase == .focus {
+                selectedType = timerManager.sessionType
+            }
+        }
         .alert("Cancel Timer?", isPresented: $showCancelConfirmation) {
             Button("Cancel Timer", role: .destructive) {
                 timerManager.cancelTimer()
@@ -70,7 +89,9 @@ struct MenuBarPopover: View {
                     .foregroundStyle(.secondary)
             }
         case .focus:
-            Text(timerManager.isPaused ? "Focus — Paused" : "Focus")
+            Text(timerManager.isPaused
+                ? "\(timerManager.sessionType.rawValue.capitalized) — Paused"
+                : timerManager.sessionType.rawValue.capitalized)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
@@ -97,6 +118,22 @@ struct MenuBarPopover: View {
             .foregroundStyle(timerManager.isPaused ? .secondary : .primary)
             .contentTransition(.numericText())
             .animation(.default, value: timerManager.remainingSeconds)
+    }
+
+    @ViewBuilder
+    private var typePicker: some View {
+        Picker("", selection: $selectedType) {
+            ForEach(allTypes, id: \.self) { type in
+                Text(type.rawValue.capitalized).tag(type)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .onChange(of: selectedType) { newValue in
+            if timerManager.phase == .focus {
+                timerManager.sessionType = newValue
+            }
+        }
     }
 
     @ViewBuilder
@@ -127,7 +164,7 @@ struct MenuBarPopover: View {
     private func startWithEnteredDuration() {
         let minutes = enteredMinutes ?? defaultFocusMinutes
         onDismiss()
-        timerManager.startFocus(durationMinutes: minutes)
+        timerManager.startFocus(durationMinutes: minutes, type: selectedType)
     }
 
     @ViewBuilder
