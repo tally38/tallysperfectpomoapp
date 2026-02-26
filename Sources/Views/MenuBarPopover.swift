@@ -45,6 +45,11 @@ struct MenuBarPopover: View {
                 typePicker
             }
 
+            // Scratch pad during focus
+            if timerManager.phase == .focus {
+                scratchPad
+            }
+
             // Primary action
             primaryAction
 
@@ -165,6 +170,29 @@ struct MenuBarPopover: View {
         let minutes = enteredMinutes ?? defaultFocusMinutes
         onDismiss()
         timerManager.startFocus(durationMinutes: minutes, type: selectedType)
+    }
+
+    @ViewBuilder
+    private var scratchPad: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Notes")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextEditor(text: $timerManager.sessionNotes)
+                .font(.system(size: 12))
+                .frame(minHeight: 48, maxHeight: 80)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+        }
     }
 
     @ViewBuilder

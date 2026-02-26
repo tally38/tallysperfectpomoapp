@@ -9,6 +9,7 @@ class TimerManager: ObservableObject {
     @Published var remainingSeconds: Int = 0
     @Published var completedPomosInCycle: Int = 0
     @Published var sessionType: PomodoroEntry.EntryType = .focus
+    @Published var sessionNotes: String = ""
 
     /// Fires when a focus or break session completes
     let events = PassthroughSubject<TimerEvent, Never>()
@@ -34,6 +35,7 @@ class TimerManager: ObservableObject {
         phase = .focus
         isPaused = false
         sessionType = type ?? .focus
+        sessionNotes = ""
         focusStartedAt = Date()
         focusDurationUsed = duration
         targetEndDate = Date().addingTimeInterval(duration)
@@ -75,6 +77,7 @@ class TimerManager: ObservableObject {
         phase = .idle
         isPaused = false
         sessionType = .focus
+        sessionNotes = ""
         targetEndDate = nil
         focusStartedAt = nil
         focusDurationUsed = 0

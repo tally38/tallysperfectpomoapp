@@ -234,6 +234,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Overlay
 
     private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval, type: PomodoroEntry.EntryType) {
+        let scratchPadNotes = timerManager.sessionNotes
+
         let saveAndDismiss: (String, TimeInterval) -> Void = { [weak self] notes, editedDuration in
             guard let self else { return }
             let entry = PomodoroEntry(
@@ -252,6 +254,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             mode: .focusComplete,
             timerManager: timerManager,
             duration: duration,
+            initialNotes: scratchPadNotes,
             onSaveAndBreak: { notes, editedDuration in
                 saveAndDismiss(notes, editedDuration)
             },

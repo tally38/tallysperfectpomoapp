@@ -9,6 +9,7 @@ struct OverlayContentView: View {
     let mode: OverlayMode
     @ObservedObject var timerManager: TimerManager
     var duration: TimeInterval = 0
+    var initialNotes: String = ""
 
     // Focus complete actions — pass (notes, editedDuration)
     var onSaveAndBreak: ((String, TimeInterval) -> Void)?
@@ -77,6 +78,7 @@ struct OverlayContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
             durationText = "\(Int(duration / 60))"
+            notes = initialNotes
             // Auto-focus the notes field with slight delay for window animation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isNotesFocused = true
