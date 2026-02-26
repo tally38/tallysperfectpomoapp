@@ -84,6 +84,11 @@ struct OverlayContentView: View {
                 isNotesFocused = true
             }
         }
+        .onChange(of: notes) { newValue in
+            if case .focusComplete = mode {
+                timerManager.sessionNotes = newValue
+            }
+        }
     }
 
     // MARK: - Focus Complete
@@ -159,7 +164,7 @@ struct OverlayContentView: View {
             .foregroundStyle(.secondary)
         }
 
-        Text("⌘Enter to save · Esc to dismiss")
+        Text("⌘Enter to save · Esc to save & dismiss")
             .font(.caption)
             .foregroundStyle(.tertiary)
     }

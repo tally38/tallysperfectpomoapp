@@ -235,7 +235,13 @@ struct MenuBarPopover: View {
 
     @ViewBuilder
     private var secondaryActions: some View {
-        Button(action: { showCancelConfirmation = true }) {
+        Button(action: {
+            if timerManager.phase == .focus {
+                showCancelConfirmation = true
+            } else {
+                timerManager.cancelTimer()
+            }
+        }) {
             Text("Cancel")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

@@ -280,7 +280,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
 
-        presentOverlay(contentView: contentView, escapeDismiss: { saveAndDismiss("", duration) })
+        presentOverlay(contentView: contentView, escapeDismiss: { [weak self] in
+            saveAndDismiss(self?.timerManager.sessionNotes ?? scratchPadNotes, duration)
+        })
     }
 
     private func showBreakCompleteOverlay() {
