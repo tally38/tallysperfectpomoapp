@@ -94,4 +94,22 @@ final class FormattersTests: XCTestCase {
     func testFormatDuration_oneMinute() {
         XCTAssertEqual(Formatters.formatDuration(60), "1 min")
     }
+
+    // MARK: - formatLongDuration
+
+    func testFormatLongDuration_zeroSeconds() {
+        XCTAssertEqual(Formatters.formatLongDuration(0), "0 min")
+    }
+
+    func testFormatLongDuration_underOneHour() {
+        XCTAssertEqual(Formatters.formatLongDuration(2700), "45 min")
+    }
+
+    func testFormatLongDuration_exactHour() {
+        XCTAssertEqual(Formatters.formatLongDuration(3600), "1h")
+    }
+
+    func testFormatLongDuration_hoursAndMinutes() {
+        XCTAssertEqual(Formatters.formatLongDuration(9000), "2h 30m")
+    }
 }

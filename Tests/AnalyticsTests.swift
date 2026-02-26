@@ -265,6 +265,220 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(summary.percentChange ?? 0, -50, accuracy: 0.01)  // 50% decrease
     }
 
+    // MARK: - totalMinutes
+
+    func testTotalMinutes_allDays() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-16 10:00"), durationMinutes: 25), // Mon
+            makeEntry(at: date("2026-02-17 10:00"), durationMinutes: 30), // Tue
+            makeEntry(at: date("2026-02-21 10:00"), durationMinutes: 20), // Sat
+        ]
+        let total = AnalyticsCalculator.totalMinutes(entries: entries, in: range)
+        XCTAssertEqual(total, 75, accuracy: 0.01)
+    }
+
+    func testTotalMinutes_weekdaysOnly() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-16 10:00"), durationMinutes: 25), // Mon
+            makeEntry(at: date("2026-02-17 10:00"), durationMinutes: 30), // Tue
+            makeEntry(at: date("2026-02-21 10:00"), durationMinutes: 20), // Sat
+            makeEntry(at: date("2026-02-22 10:00"), durationMinutes: 15), // Sun
+        ]
+        let total = AnalyticsCalculator.totalMinutes(entries: entries, in: range, weekdaysOnly: true)
+        XCTAssertEqual(total, 55, accuracy: 0.01, "Should only include Mon + Tue, not Sat/Sun")
+    }
+
+    func testTotalMinutes_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-16 10:00"), durationMinutes: 25, type: .focus),
+            makeEntry(at: date("2026-02-17 10:00"), durationMinutes: 30, type: .meeting),
+        ]
+        let total = AnalyticsCalculator.totalMinutes(entries: entries, in: range, typeFilter: [.focus])
+        XCTAssertEqual(total, 25, accuracy: 0.01, "Should only include focus entries")
+    }
+
+    func testTotalMinutes_weekdaysOnly_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-16 10:00"), durationMinutes: 25, type: .focus),   // Mon
+            makeEntry(at: date("2026-02-16 11:00"), durationMinutes: 30, type: .meeting),  // Mon
+            makeEntry(at: date("2026-02-21 10:00"), durationMinutes: 20, type: .focus),    // Sat
+        ]
+        let total = AnalyticsCalculator.totalMinutes(entries: entries, in: range, weekdaysOnly: true, typeFilter: [.focus])
+        XCTAssertEqual(total, 25, accuracy: 0.01, "Mon focus only; excludes Mon meeting and Sat focus")
+    }
+
+    func testTotalMinutes_emptyEntries() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let total = AnalyticsCalculator.totalMinutes(entries: [], in: range)
+        XCTAssertEqual(total, 0, accuracy: 0.01)
+    }
+
+    // MARK: - weekdayDailyAverage
+
+    func testWeekdayDailyAverage_fullPastWeek() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: -1, referenceDate: ref)
+        // Feb 9 (Mon) through Feb 13 (Fri) = 5 weekdays, each 30 min = 150 total
+        var entries: [PomodoroEntry] = []
+        for day in 9...13 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 30))
+        }
+        // Sat/Sun entries should be excluded
+        entries.append(makeEntry(at: date("2026-02-14 10:00"), durationMinutes: 50))
+        entries.append(makeEntry(at: date("2026-02-15 10:00"), durationMinutes: 50))
+
+        let avg = AnalyticsCalculator.weekdayDailyAverage(entries: entries, in: range, referenceDate: ref)
+        // 150 / 5 = 30
+        XCTAssertEqual(avg, 30, accuracy: 0.01)
+    }
+
+    func testWeekdayDailyAverage_currentWeek_partialWeekdays() {
+        // Wednesday Feb 19 => elapsed weekdays: Mon(16), Tue(17), Wed(18), Thu(19) = 4 weekdays
+        // Wait: Feb 16=Mon, 17=Tue, 18=Wed, 19=Thu
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-16 10:00"), durationMinutes: 20), // Mon
+            makeEntry(at: date("2026-02-17 10:00"), durationMinutes: 20), // Tue
+        ]
+        let avg = AnalyticsCalculator.weekdayDailyAverage(entries: entries, in: range, referenceDate: ref)
+        // 40 min / 4 elapsed weekdays = 10
+        XCTAssertEqual(avg, 10, accuracy: 0.01)
+    }
+
+    func testWeekdayDailyAverage_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: -1, referenceDate: ref)
+        var entries: [PomodoroEntry] = []
+        for day in 9...13 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 30, type: .focus))
+            entries.append(makeEntry(at: date("2026-02-\(day) 11:00"), durationMinutes: 10, type: .meeting))
+        }
+        let avg = AnalyticsCalculator.weekdayDailyAverage(entries: entries, in: range, referenceDate: ref, typeFilter: [.focus])
+        // 150 / 5 = 30 (only focus)
+        XCTAssertEqual(avg, 30, accuracy: 0.01)
+    }
+
+    func testWeekdayDailyAverage_noEntries() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: -1, referenceDate: ref)
+        let avg = AnalyticsCalculator.weekdayDailyAverage(entries: [], in: range, referenceDate: ref)
+        XCTAssertEqual(avg, 0, accuracy: 0.01)
+    }
+
+    // MARK: - todayVsRecent
+
+    func testTodayVsRecent_basicComparison() {
+        let ref = date("2026-02-19 12:00") // Wednesday
+        var entries: [PomodoroEntry] = []
+        // Past 7 days: Feb 12-18, each 20 min = 140 total, avg = 20
+        for day in 12...18 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 20))
+        }
+        // Today: 30 min
+        entries.append(makeEntry(at: date("2026-02-19 09:00"), durationMinutes: 30))
+
+        let result = AnalyticsCalculator.todayVsRecent(entries: entries, referenceDate: ref)
+        XCTAssertEqual(result.todayMinutes, 30, accuracy: 0.01)
+        XCTAssertEqual(result.recentDailyAverage, 20, accuracy: 0.01)
+        XCTAssertEqual(result.percentChange ?? 0, 50, accuracy: 0.01)
+    }
+
+    func testTodayVsRecent_noRecentData() {
+        let ref = date("2026-02-19 12:00")
+        let entries = [makeEntry(at: date("2026-02-19 09:00"), durationMinutes: 25)]
+
+        let result = AnalyticsCalculator.todayVsRecent(entries: entries, referenceDate: ref)
+        XCTAssertEqual(result.todayMinutes, 25, accuracy: 0.01)
+        XCTAssertEqual(result.recentDailyAverage, 0, accuracy: 0.01)
+        XCTAssertNil(result.percentChange)
+    }
+
+    func testTodayVsRecent_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        var entries: [PomodoroEntry] = []
+        for day in 12...18 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 20, type: .focus))
+            entries.append(makeEntry(at: date("2026-02-\(day) 11:00"), durationMinutes: 10, type: .meeting))
+        }
+        entries.append(makeEntry(at: date("2026-02-19 09:00"), durationMinutes: 25, type: .focus))
+        entries.append(makeEntry(at: date("2026-02-19 10:00"), durationMinutes: 15, type: .meeting))
+
+        let result = AnalyticsCalculator.todayVsRecent(entries: entries, referenceDate: ref, typeFilter: [.focus])
+        XCTAssertEqual(result.todayMinutes, 25, accuracy: 0.01, "Only today's focus")
+        XCTAssertEqual(result.recentDailyAverage, 20, accuracy: 0.01, "Only past focus avg")
+    }
+
+    func testTodayVsRecent_noTodayData() {
+        let ref = date("2026-02-19 12:00")
+        var entries: [PomodoroEntry] = []
+        for day in 12...18 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 20))
+        }
+
+        let result = AnalyticsCalculator.todayVsRecent(entries: entries, referenceDate: ref)
+        XCTAssertEqual(result.todayMinutes, 0, accuracy: 0.01)
+        XCTAssertEqual(result.recentDailyAverage, 20, accuracy: 0.01)
+    }
+
+    // MARK: - Type filtering on existing methods
+
+    func testAggregate_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: 0, referenceDate: ref)
+        let entries = [
+            makeEntry(at: date("2026-02-18 10:00"), durationMinutes: 25, type: .focus),
+            makeEntry(at: date("2026-02-18 11:00"), durationMinutes: 30, type: .meeting),
+        ]
+        let result = AnalyticsCalculator.aggregate(entries: entries, in: range, typeFilter: [.focus])
+
+        let types = Set(result.map(\.typeRawValue))
+        XCTAssertEqual(types, ["focus"])
+
+        // Feb 18 = Wednesday (dayIndex 2)
+        let wedFocus = result.first { $0.dayIndex == 2 && $0.typeRawValue == "focus" }
+        XCTAssertEqual(wedFocus?.totalMinutes ?? 0, 25, accuracy: 0.01)
+    }
+
+    func testDailyAverage_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        let range = AnalyticsCalculator.weekRange(offset: -1, referenceDate: ref)
+        var entries: [PomodoroEntry] = []
+        for day in 9...15 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 25, type: .focus))
+            entries.append(makeEntry(at: date("2026-02-\(day) 11:00"), durationMinutes: 15, type: .meeting))
+        }
+        let avg = AnalyticsCalculator.dailyAverage(entries: entries, in: range, referenceDate: ref, typeFilter: [.focus])
+        XCTAssertEqual(avg, 25, accuracy: 0.01, "Should only average focus entries")
+    }
+
+    func testWeekSummary_withTypeFilter() {
+        let ref = date("2026-02-19 12:00")
+        var entries: [PomodoroEntry] = []
+        // Last week: focus 20/day, meeting 10/day
+        for day in 9...15 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 20, type: .focus))
+            entries.append(makeEntry(at: date("2026-02-\(day) 11:00"), durationMinutes: 10, type: .meeting))
+        }
+        // This week: focus 30/day
+        for day in 16...19 {
+            entries.append(makeEntry(at: date("2026-02-\(day) 10:00"), durationMinutes: 30, type: .focus))
+        }
+        let summary = AnalyticsCalculator.weekSummary(entries: entries, weekOffset: 0, referenceDate: ref, typeFilter: [.focus])
+        XCTAssertEqual(summary.dailyAverageMinutes, 30, accuracy: 0.01)
+        XCTAssertEqual(summary.previousWeekDailyAverage ?? 0, 20, accuracy: 0.01, "Prior week focus only")
+        XCTAssertEqual(summary.percentChange ?? 0, 50, accuracy: 0.01)
+    }
+
     // MARK: - mondayBasedDayLabels
 
     func testMondayBasedDayLabels_startsWithMon() {

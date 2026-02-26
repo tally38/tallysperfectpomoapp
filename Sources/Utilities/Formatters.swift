@@ -45,4 +45,18 @@ enum Formatters {
         }
         return "\(minutes) min"
     }
+
+    /// Formats duration in seconds to "Xh Ym" for longer durations (e.g., 9000 → "2h 30m")
+    static func formatLongDuration(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds) / 60
+        if totalMinutes < 60 {
+            return "\(totalMinutes) min"
+        }
+        let hours = totalMinutes / 60
+        let mins = totalMinutes % 60
+        if mins == 0 {
+            return "\(hours)h"
+        }
+        return "\(hours)h \(mins)m"
+    }
 }

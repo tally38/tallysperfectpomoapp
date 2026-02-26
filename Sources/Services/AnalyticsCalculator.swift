@@ -17,6 +17,12 @@ enum AnalyticsCalculator {
         let percentChange: Double?
     }
 
+    struct TodayComparison: Equatable {
+        let todayMinutes: Double
+        let recentDailyAverage: Double  // avg of prior 7 calendar days
+        let percentChange: Double?      // nil if recentDailyAverage is 0
+    }
+
     // MARK: - Week Range
 
     /// Returns (Monday 00:00, Sunday 23:59:59) for the week at the given offset.
@@ -34,15 +40,32 @@ enum AnalyticsCalculator {
         return (targetMonday, endOfSunday)
     }
 
+    // MARK: - Filtering
+
+    /// Filters entries by date range and optional type set.
+    private static func filterEntries(
+        _ entries: [PomodoroEntry],
+        in range: (start: Date, end: Date),
+        typeFilter: Set<PomodoroEntry.EntryType>?
+    ) -> [PomodoroEntry] {
+        entries.filter { entry in
+            entry.startedAt >= range.start
+            && entry.startedAt <= range.end
+            && (typeFilter == nil || typeFilter!.contains(entry.type))
+        }
+    }
+
     // MARK: - Aggregation
 
     /// Aggregates entries within the given range into per-day, per-type totals.
     /// Always returns entries for all 7 days (Mon–Sun), with 0 minutes for empty days.
-    static func aggregate(entries: [PomodoroEntry], in range: (start: Date, end: Date)) -> [DayTypeAggregate] {
+    static func aggregate(
+        entries: [PomodoroEntry],
+        in range: (start: Date, end: Date),
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
+    ) -> [DayTypeAggregate] {
         let calendar = Calendar.current
-        let weekEntries = entries.filter {
-            $0.startedAt >= range.start && $0.startedAt <= range.end
-        }
+        let weekEntries = filterEntries(entries, in: range, typeFilter: typeFilter)
 
         // Build day labels for Mon–Sun of this week
         let dayLabels = mondayBasedDayLabels()
@@ -91,12 +114,11 @@ enum AnalyticsCalculator {
     static func dailyAverage(
         entries: [PomodoroEntry],
         in range: (start: Date, end: Date),
-        referenceDate: Date = Date()
+        referenceDate: Date = Date(),
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
     ) -> Double {
         let calendar = Calendar.current
-        let weekEntries = entries.filter {
-            $0.startedAt >= range.start && $0.startedAt <= range.end
-        }
+        let weekEntries = filterEntries(entries, in: range, typeFilter: typeFilter)
         let totalMinutes = weekEntries.reduce(0.0) { $0 + $1.duration / 60.0 }
 
         let today = calendar.startOfDay(for: referenceDate)
@@ -117,15 +139,14 @@ enum AnalyticsCalculator {
     static func weekSummary(
         entries: [PomodoroEntry],
         weekOffset: Int,
-        referenceDate: Date = Date()
+        referenceDate: Date = Date(),
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
     ) -> WeekSummary {
         let currentRange = weekRange(offset: weekOffset, referenceDate: referenceDate)
-        let currentAvg = dailyAverage(entries: entries, in: currentRange, referenceDate: referenceDate)
+        let currentAvg = dailyAverage(entries: entries, in: currentRange, referenceDate: referenceDate, typeFilter: typeFilter)
 
         let priorRange = weekRange(offset: weekOffset - 1, referenceDate: referenceDate)
-        let priorEntries = entries.filter {
-            $0.startedAt >= priorRange.start && $0.startedAt <= priorRange.end
-        }
+        let priorEntries = filterEntries(entries, in: priorRange, typeFilter: typeFilter)
 
         if priorEntries.isEmpty {
             return WeekSummary(
@@ -135,12 +156,103 @@ enum AnalyticsCalculator {
             )
         }
 
-        let priorAvg = dailyAverage(entries: entries, in: priorRange, referenceDate: referenceDate)
+        let priorAvg = dailyAverage(entries: entries, in: priorRange, referenceDate: referenceDate, typeFilter: typeFilter)
         let pctChange: Double? = priorAvg > 0 ? ((currentAvg - priorAvg) / priorAvg) * 100 : nil
 
         return WeekSummary(
             dailyAverageMinutes: currentAvg,
             previousWeekDailyAverage: priorAvg,
+            percentChange: pctChange
+        )
+    }
+
+    // MARK: - Total Minutes
+
+    /// Total minutes in the given range, optionally restricted to weekdays (Mon–Fri).
+    static func totalMinutes(
+        entries: [PomodoroEntry],
+        in range: (start: Date, end: Date),
+        weekdaysOnly: Bool = false,
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
+    ) -> Double {
+        let calendar = Calendar.current
+        let filtered = filterEntries(entries, in: range, typeFilter: typeFilter)
+        return filtered
+            .filter { entry in
+                if weekdaysOnly {
+                    let weekday = calendar.component(.weekday, from: entry.startedAt)
+                    return weekday >= 2 && weekday <= 6  // Mon=2 ... Fri=6
+                }
+                return true
+            }
+            .reduce(0.0) { $0 + $1.duration / 60.0 }
+    }
+
+    // MARK: - Weekday Daily Average
+
+    /// Computes the daily average in minutes for weekdays (Mon–Fri) only.
+    /// For the current week, divides by elapsed weekdays. For past weeks, divides by 5.
+    static func weekdayDailyAverage(
+        entries: [PomodoroEntry],
+        in range: (start: Date, end: Date),
+        referenceDate: Date = Date(),
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
+    ) -> Double {
+        let calendar = Calendar.current
+        let weekdayMinutes = totalMinutes(entries: entries, in: range, weekdaysOnly: true, typeFilter: typeFilter)
+
+        let today = calendar.startOfDay(for: referenceDate)
+        let elapsedWeekdays: Int
+        if today >= range.start && today <= range.end {
+            var count = 0
+            var day = range.start
+            while day <= today {
+                let wd = calendar.component(.weekday, from: day)
+                if wd >= 2 && wd <= 6 { count += 1 }
+                day = calendar.date(byAdding: .day, value: 1, to: day)!
+            }
+            elapsedWeekdays = max(1, count)
+        } else {
+            elapsedWeekdays = 5
+        }
+
+        return weekdayMinutes / Double(elapsedWeekdays)
+    }
+
+    // MARK: - Today vs Recent
+
+    /// Compares today's total to the daily average of the prior 7 calendar days.
+    static func todayVsRecent(
+        entries: [PomodoroEntry],
+        referenceDate: Date = Date(),
+        typeFilter: Set<PomodoroEntry.EntryType>? = nil
+    ) -> TodayComparison {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: referenceDate)
+        let todayEnd = calendar.date(byAdding: .second, value: 86399, to: todayStart)!
+
+        let todayTotal = totalMinutes(
+            entries: entries,
+            in: (todayStart, todayEnd),
+            typeFilter: typeFilter
+        )
+
+        let past7Start = calendar.date(byAdding: .day, value: -7, to: todayStart)!
+        let past7End = calendar.date(byAdding: .second, value: -1, to: todayStart)!
+        let past7Total = totalMinutes(
+            entries: entries,
+            in: (past7Start, past7End),
+            typeFilter: typeFilter
+        )
+        let recentAvg = past7Total / 7.0
+
+        let pctChange: Double? = recentAvg > 0
+            ? ((todayTotal - recentAvg) / recentAvg) * 100
+            : nil
+
+        return TodayComparison(
+            todayMinutes: todayTotal,
+            recentDailyAverage: recentAvg,
             percentChange: pctChange
         )
     }
