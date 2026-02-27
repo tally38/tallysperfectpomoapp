@@ -36,8 +36,6 @@ struct LogWindow: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .opacity(selectedTab == .log ? 1 : 0)
-                .allowsHitTesting(selectedTab == .log)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
