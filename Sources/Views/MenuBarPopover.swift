@@ -132,8 +132,9 @@ struct MenuBarPopover: View {
                 Text(type.rawValue.capitalized).tag(type)
             }
         }
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .labelsHidden()
+        .fixedSize()
         .onChange(of: selectedType) { newValue in
             if timerManager.phase == .focus {
                 timerManager.sessionType = newValue
@@ -200,7 +201,7 @@ struct MenuBarPopover: View {
         switch (timerManager.phase, timerManager.isPaused) {
         case (.idle, _):
             Button(action: { startWithEnteredDuration() }) {
-                Text("Start Focus")
+                Text("Start")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)

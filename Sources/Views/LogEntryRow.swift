@@ -9,7 +9,7 @@ struct LogEntryRow: View {
 
     @State private var isEditing = false
     @State private var editedNotes: String = ""
-    @State private var isEditingDuration = false
+    @State private var editedType: PomodoroEntry.EntryType = .focus
     @State private var editedDurationText: String = ""
     @State private var showDeleteConfirmation = false
 
@@ -39,57 +39,28 @@ struct LogEntryRow: View {
                     .foregroundStyle(.secondary)
 
                 // Duration badge
-                if isEditingDuration {
-                    HStack(spacing: 4) {
-                        TextField("", text: $editedDurationText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 44)
-                            .multilineTextAlignment(.center)
-                            .font(.caption.monospacedDigit())
-                        Text("min")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Button("Save") {
-                            if let minutes = Int(editedDurationText), minutes > 0 {
-                                onUpdateDuration(TimeInterval(minutes * 60))
-                            }
-                            isEditingDuration = false
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(accentColor)
-                        .controlSize(.mini)
-                        Button("Cancel") {
-                            isEditingDuration = false
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
-                    }
-                } else {
-                    Text(Formatters.formatDuration(entry.duration))
-                        .font(.caption.weight(.medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(accentColor.opacity(0.15))
-                        )
-                        .foregroundStyle(accentColor)
-                        .onTapGesture {
-                            editedDurationText = "\(Int(entry.duration) / 60)"
-                            isEditingDuration = true
-                        }
-                }
-
-                // Type badge
-                Text(entry.type.rawValue)
-                    .font(.caption2.weight(.medium))
-                    .padding(.horizontal, 6)
+                Text(Formatters.formatDuration(entry.duration))
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(colorForType(entry.type).opacity(0.15))
+                            .fill(accentColor.opacity(0.15))
                     )
-                    .foregroundStyle(colorForType(entry.type))
+                    .foregroundStyle(accentColor)
+
+                // Type badge — hidden while editing (shown in edit form instead)
+                if !isEditing {
+                    Text(entry.type.rawValue)
+                        .font(.caption2.weight(.medium))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(colorForType(entry.type).opacity(0.15))
+                        )
+                        .foregroundStyle(colorForType(entry.type))
+                }
 
                 if entry.manual {
                     Text("manual")
@@ -106,7 +77,7 @@ struct LogEntryRow: View {
                 Spacer()
             }
 
-            // Notes
+            // Notes / Edit form
             if isEditing {
                 editingView
             } else {
@@ -115,31 +86,10 @@ struct LogEntryRow: View {
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        .onTapGesture(count: 2) { startEditing() }
         .contextMenu {
-            Button(action: {
-                isEditing = true
-                editedNotes = entry.notes
-            }) {
-                Label("Edit Notes", systemImage: "pencil")
-            }
-            Button(action: {
-                editedDurationText = "\(Int(entry.duration) / 60)"
-                isEditingDuration = true
-            }) {
-                Label("Edit Duration", systemImage: "clock")
-            }
-            Menu("Change Type") {
-                ForEach(allTypes, id: \.self) { type in
-                    Button(action: {
-                        onUpdateType(type)
-                    }) {
-                        if type == entry.type {
-                            Label(type.rawValue, systemImage: "checkmark")
-                        } else {
-                            Text(type.rawValue)
-                        }
-                    }
-                }
+            Button(action: { startEditing() }) {
+                Label("Edit", systemImage: "pencil")
             }
             Button(role: .destructive, action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
@@ -158,6 +108,27 @@ struct LogEntryRow: View {
         }
     }
 
+    private func startEditing() {
+        editedNotes = entry.notes
+        editedType = entry.type
+        editedDurationText = "\(Int(entry.duration) / 60)"
+        isEditing = true
+    }
+
+    private func saveEdits() {
+        onUpdateNotes(editedNotes)
+        if editedType != entry.type {
+            onUpdateType(editedType)
+        }
+        if let minutes = Int(editedDurationText), minutes > 0 {
+            let newDuration = TimeInterval(minutes * 60)
+            if newDuration != entry.duration {
+                onUpdateDuration(newDuration)
+            }
+        }
+        isEditing = false
+    }
+
     @ViewBuilder
     private var notesView: some View {
         if entry.notes.isEmpty {
@@ -165,24 +136,37 @@ struct LogEntryRow: View {
                 .font(.body)
                 .foregroundStyle(.tertiary)
                 .italic()
-                .onTapGesture {
-                    isEditing = true
-                    editedNotes = entry.notes
-                }
         } else {
             Text(entry.notes)
                 .font(.body)
                 .lineLimit(3)
-                .onTapGesture {
-                    isEditing = true
-                    editedNotes = entry.notes
-                }
         }
     }
 
     @ViewBuilder
     private var editingView: some View {
-        VStack(alignment: .trailing, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    TextField("", text: $editedDurationText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 44)
+                        .multilineTextAlignment(.center)
+                        .font(.caption.monospacedDigit())
+                    Text("min")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Picker("", selection: $editedType) {
+                    ForEach(allTypes, id: \.self) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 100)
+            }
+
             TextEditor(text: $editedNotes)
                 .font(.body)
                 .frame(minHeight: 50, maxHeight: 100)
@@ -198,6 +182,7 @@ struct LogEntryRow: View {
                 )
 
             HStack(spacing: 8) {
+                Spacer()
                 Button("Cancel") {
                     isEditing = false
                 }
@@ -205,8 +190,7 @@ struct LogEntryRow: View {
                 .controlSize(.small)
 
                 Button("Save") {
-                    onUpdateNotes(editedNotes)
-                    isEditing = false
+                    saveEdits()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(accentColor)

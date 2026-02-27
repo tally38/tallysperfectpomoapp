@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastPopoverDismissTime = Date.distantPast
     private var overlayWindow: OverlayWindow?
     private var overlayDismissHandler: (() -> Void)?
+    private var isFocusOverlayShowing = false
     private var logWindow: NSWindow?
     private var settingsWindow: NSWindow?
 
@@ -236,14 +237,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showFocusCompleteOverlay(startedAt: Date, duration: TimeInterval, type: PomodoroEntry.EntryType) {
         let scratchPadNotes = timerManager.sessionNotes
 
-        let saveAndDismiss: (String, TimeInterval) -> Void = { [weak self] notes, editedDuration in
+        let saveAndDismiss: (String, TimeInterval, PomodoroEntry.EntryType) -> Void = { [weak self] notes, editedDuration, selectedType in
             guard let self else { return }
             let entry = PomodoroEntry(
                 id: UUID(),
                 startedAt: startedAt,
                 duration: editedDuration,
                 notes: notes,
-                type: type,
+                type: selectedType,
                 manual: false
             )
             self.pomodoroStore.addEntry(entry)
@@ -255,17 +256,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             timerManager: timerManager,
             duration: duration,
             initialNotes: scratchPadNotes,
-            onSaveAndBreak: { notes, editedDuration in
-                saveAndDismiss(notes, editedDuration)
+            initialType: type,
+            onSaveAndBreak: { notes, editedDuration, selectedType in
+                saveAndDismiss(notes, editedDuration, selectedType)
             },
-            onSaveAndSkipBreak: { [weak self] notes, editedDuration in
+            onSaveAndSkipBreak: { [weak self] notes, editedDuration, selectedType in
                 guard let self else { return }
                 let entry = PomodoroEntry(
                     id: UUID(),
                     startedAt: startedAt,
                     duration: editedDuration,
                     notes: notes,
-                    type: type,
+                    type: selectedType,
                     manual: false
                 )
                 self.pomodoroStore.addEntry(entry)
@@ -275,18 +277,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onStartFocus: nil,
             onNotYet: nil,
-            onClose: { notes, editedDuration in
-                saveAndDismiss(notes, editedDuration)
+            onClose: { [weak self] notes, editedDuration, selectedType in
+                self?.timerManager.cancelTimer()
+                saveAndDismiss(notes, editedDuration, selectedType)
             }
         )
 
+        isFocusOverlayShowing = true
         presentOverlay(contentView: contentView, escapeDismiss: { [weak self] in
-            saveAndDismiss(self?.timerManager.sessionNotes ?? scratchPadNotes, duration)
+            let currentNotes = self?.timerManager.sessionNotes ?? scratchPadNotes
+            self?.timerManager.cancelTimer()
+            saveAndDismiss(currentNotes, duration, type)
         })
     }
 
     private func showBreakCompleteOverlay() {
-        // Auto-dismiss focus-complete overlay if still open (saves with empty notes)
+        // If focus-complete overlay is still open, keep it — the UI will
+        // react to the phase change (disable "Take Break", show "break's over").
+        // Sound already played in subscribeToTimerEvents.
+        if isFocusOverlayShowing {
+            return
+        }
+
+        // Auto-dismiss any other overlay if still open
         if overlayWindow != nil {
             overlayDismissHandler?()
         }
@@ -322,7 +335,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.timerManager.snooze()
                 self?.dismissOverlay()
             },
-            onClose: { _, _ in
+            onClose: { _, _, _ in
                 dismissAction()
             }
         )
@@ -364,6 +377,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func dismissOverlay() {
         guard let overlay = overlayWindow else { return }
+        isFocusOverlayShowing = false
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2

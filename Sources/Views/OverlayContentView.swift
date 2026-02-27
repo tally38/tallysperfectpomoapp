@@ -10,10 +10,11 @@ struct OverlayContentView: View {
     @ObservedObject var timerManager: TimerManager
     var duration: TimeInterval = 0
     var initialNotes: String = ""
+    var initialType: PomodoroEntry.EntryType = .focus
 
-    // Focus complete actions — pass (notes, editedDuration)
-    var onSaveAndBreak: ((String, TimeInterval) -> Void)?
-    var onSaveAndSkipBreak: ((String, TimeInterval) -> Void)?
+    // Focus complete actions — pass (notes, editedDuration, type)
+    var onSaveAndBreak: ((String, TimeInterval, PomodoroEntry.EntryType) -> Void)?
+    var onSaveAndSkipBreak: ((String, TimeInterval, PomodoroEntry.EntryType) -> Void)?
 
     // Break complete actions
     var onStartFocus: (() -> Void)?
@@ -21,16 +22,26 @@ struct OverlayContentView: View {
     var onSnooze: (() -> Void)?
 
     // Close button / escape handler
-    var onClose: ((String, TimeInterval) -> Void)?
+    var onClose: ((String, TimeInterval, PomodoroEntry.EntryType) -> Void)?
 
     @State private var notes: String = ""
     @State private var durationText: String = ""
+    @State private var selectedType: PomodoroEntry.EntryType = .focus
+    @State private var breakWasRunning = false
+    @State private var breakExpired = false
     @FocusState private var isNotesFocused: Bool
 
     @AppStorage("blockingOverlay") private var blockingOverlay = false
 
     private let accentColor = Color(red: 232/255, green: 93/255, blue: 74/255)
     private let cardMaxWidth: CGFloat = 500
+
+    private var allTypes: [PomodoroEntry.EntryType] {
+        var types: [PomodoroEntry.EntryType] = [.focus, .meeting]
+        let custom = UserDefaults.standard.stringArray(forKey: "customPomoTypes") ?? []
+        types += custom.map { PomodoroEntry.EntryType(rawValue: $0) }
+        return types
+    }
 
     private var editedDuration: TimeInterval {
         guard let minutes = Int(durationText), minutes > 0 else {
@@ -64,7 +75,7 @@ struct OverlayContentView: View {
         .padding(32)
         .frame(width: cardMaxWidth)
         .overlay(alignment: .topTrailing) {
-            Button(action: { onClose?(notes, editedDuration) }) {
+            Button(action: { onClose?(notes, editedDuration, selectedType) }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.secondary)
@@ -79,9 +90,21 @@ struct OverlayContentView: View {
         .onAppear {
             durationText = "\(Int(duration / 60))"
             notes = initialNotes
+            selectedType = initialType
+            if timerManager.phase == .shortBreak || timerManager.phase == .longBreak {
+                breakWasRunning = true
+            }
             // Auto-focus the notes field with slight delay for window animation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isNotesFocused = true
+            }
+        }
+        .onChange(of: timerManager.phase) { newPhase in
+            if newPhase == .shortBreak || newPhase == .longBreak {
+                breakWasRunning = true
+            }
+            if breakWasRunning && newPhase != .shortBreak && newPhase != .longBreak {
+                breakExpired = true
             }
         }
         .onChange(of: notes) { newValue in
@@ -98,18 +121,33 @@ struct OverlayContentView: View {
         Text("Focus session complete!")
             .font(.title2.weight(.semibold))
 
-        HStack(spacing: 4) {
-            Text("Duration:")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            TextField("", text: $durationText)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 50)
-                .multilineTextAlignment(.center)
-                .font(.subheadline.monospacedDigit())
-            Text("min")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            HStack(spacing: 4) {
+                Text("Duration:")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("", text: $durationText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 50)
+                    .multilineTextAlignment(.center)
+                    .font(.subheadline.monospacedDigit())
+                Text("min")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 4) {
+                Text("Type:")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Picker("", selection: $selectedType) {
+                    ForEach(allTypes, id: \.self) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 100)
+            }
         }
 
         VStack(alignment: .leading, spacing: 8) {
@@ -134,7 +172,7 @@ struct OverlayContentView: View {
         }
 
         HStack(spacing: 12) {
-            Button(action: { onSaveAndSkipBreak?(notes, editedDuration) }) {
+            Button(action: { onSaveAndSkipBreak?(notes, editedDuration, selectedType) }) {
                 Text("Save & Skip Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -142,7 +180,7 @@ struct OverlayContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            Button(action: { onSaveAndBreak?(notes, editedDuration) }) {
+            Button(action: { onSaveAndBreak?(notes, editedDuration, selectedType) }) {
                 Text("Save & Take Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -151,6 +189,7 @@ struct OverlayContentView: View {
             .tint(accentColor)
             .controlSize(.large)
             .keyboardShortcut(.return, modifiers: .command)
+            .disabled(breakExpired)
         }
 
         if timerManager.phase == .shortBreak || timerManager.phase == .longBreak {
@@ -159,6 +198,14 @@ struct OverlayContentView: View {
                     .foregroundStyle(.secondary)
                 Text("Break: \(Formatters.formatCountdown(timerManager.remainingSeconds))")
                     .monospacedDigit()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else if breakExpired {
+            HStack(spacing: 6) {
+                Image(systemName: "cup.and.saucer.fill")
+                    .foregroundStyle(.secondary)
+                Text("Break's over")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
