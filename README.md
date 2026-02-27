@@ -18,18 +18,6 @@ Existing pomodoro apps didn't let me do exactly what I wanted: keep track of wha
 
 The only things I needed to fix after the initial version were 1. Making the menu bar icon color dynamic so it shows up on both light and dark menu bars, and 2. adding a "Quit App" option to the menu. Everything else worked out of the box.
 
-## Features
-
-- **Menu bar countdown** — see your remaining focus/break time at a glance
-- **Partial-screen overlay alerts** — a dimmed backdrop with a centered card appears when timers end, impossible to miss but not hostile
-- **Session notes** — record what you accomplished after each focus session
-- **Persistent log** — browse all past sessions grouped by day, edit notes, delete entries
-- **Manual entries** — retroactively log focus blocks you didn't record with the app
-- **Custom entry types** — built-in Focus and Meeting types, plus create your own
-- **Auto-start breaks** — break timer starts immediately when focus ends (no dead time)
-- **Configurable durations** — focus, short break, long break, and long-break interval
-- **Launch at login** — uses macOS 13+ `SMAppService`
-- 
 ## Requirements
 
 - macOS 13 (Ventura) or later
@@ -37,7 +25,15 @@ The only things I needed to fix after the initial version were 1. Making the men
 
 ## Getting Started
 
-Clone the repo and run:
+Clone the repo, build, and run:
+
+```bash
+make bundle && open "Tally's Perfect Pomo.app"
+```
+
+That's it! The `.app` bundle is also needed for Launch at Login to work. Click on the app if it doesn't launch.
+
+For development, you can skip the bundle step:
 
 ```bash
 # Debug build + run
@@ -47,14 +43,21 @@ make run
 swift build && .build/debug/TallysPerfectPomo
 ```
 
-To create a proper `.app` bundle (needed for Launch at Login):
+## Features
 
-```bash
-make bundle
-open "Tally's Perfect Pomo.app"
-```
-
-Click on the app if it doesn't launch.
+- **Menu bar countdown** — see your remaining focus/break time at a glance, with a configurable tomato icon
+- **Draggable floating panel** — the main control panel floats above your work and can be repositioned
+- **Overlay alerts** — a dimmed backdrop with a centered card appears when timers end, impossible to miss but not hostile
+- **Session scratch pad** — jot notes while you're focusing, they carry over to the session log when the timer ends
+- **Inline editing** — edit notes, duration, and session type directly in the log or the overlay card
+- **Persistent log** — browse all past sessions grouped by day, swipe to delete
+- **Analytics** — weekly focus chart with type filtering, today vs. 7-day comparison, and hover details
+- **Manual entries** — retroactively log focus blocks you didn't capture with the timer
+- **Custom entry types** — built-in Focus and Meeting types, plus create your own
+- **Custom focus durations** — pick a one-off duration when starting a session, or change the defaults in settings
+- **Break snooze** — extend a break without resetting the long-break cycle
+- **Auto-start breaks** — break timer starts immediately when focus ends (no dead time)
+- **Launch at login** — uses macOS 13+ `SMAppService`
 
 ## Running Tests
 
