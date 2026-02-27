@@ -38,19 +38,18 @@ struct LogEntryRow: View {
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
 
-                // Duration badge
-                Text(Formatters.formatDuration(entry.duration))
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(accentColor.opacity(0.15))
-                    )
-                    .foregroundStyle(accentColor)
-
-                // Type badge — hidden while editing (shown in edit form instead)
+                // Duration & type badges — hidden while editing (shown in edit form instead)
                 if !isEditing {
+                    Text(Formatters.formatDuration(entry.duration))
+                        .font(.caption.weight(.medium))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(accentColor.opacity(0.15))
+                        )
+                        .foregroundStyle(accentColor)
+
                     Text(entry.type.rawValue)
                         .font(.caption2.weight(.medium))
                         .padding(.horizontal, 6)
@@ -150,11 +149,11 @@ struct LogEntryRow: View {
                 HStack(spacing: 4) {
                     TextField("", text: $editedDurationText)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 44)
+                        .frame(width: 50)
                         .multilineTextAlignment(.center)
-                        .font(.caption.monospacedDigit())
+                        .font(.body.monospacedDigit())
                     Text("min")
-                        .font(.caption)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                 }
 

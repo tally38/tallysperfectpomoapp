@@ -173,15 +173,20 @@ struct OverlayContentView: View {
 
         HStack(spacing: 12) {
             Button(action: { onSaveAndSkipBreak?(notes, editedDuration, selectedType) }) {
-                Text("Save & Skip Break")
+                Text(breakExpired ? "Save & Start Focus" : "Save & Skip Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            Button(action: { onSaveAndBreak?(notes, editedDuration, selectedType) }) {
-                Text("Save & Take Break")
+            Button(action: {
+                if breakExpired {
+                    timerManager.startBreak()
+                }
+                onSaveAndBreak?(notes, editedDuration, selectedType)
+            }) {
+                Text(breakExpired ? "Save & Take Another Break" : "Save & Take Break")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
@@ -189,7 +194,6 @@ struct OverlayContentView: View {
             .tint(accentColor)
             .controlSize(.large)
             .keyboardShortcut(.return, modifiers: .command)
-            .disabled(breakExpired)
         }
 
         if timerManager.phase == .shortBreak || timerManager.phase == .longBreak {
